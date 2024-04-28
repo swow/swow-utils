@@ -25,11 +25,14 @@ use function file_get_contents;
 use function file_put_contents;
 use function filesize;
 use function fread;
+use function function_exists;
 use function getenv;
 use function implode;
 use function is_numeric;
 use function md5;
 use function passthru as native_passthru;
+use function pcntl_waitpid;
+use function pcntl_wexitstatus;
 use function proc_close;
 use function proc_get_status;
 use function proc_open;
@@ -40,6 +43,7 @@ use function strtolower;
 use function sys_get_temp_dir;
 use function trigger_error;
 use function trim;
+use function usleep;
 
 use const E_USER_WARNING;
 use const PATHINFO_FILENAME;
@@ -290,8 +294,28 @@ function processExecute(array $command, &$status = null): string
     do {
         $output .= fread($pipes[1], 8192);
     } while (!feof($pipes[1]));
+    /* FIXME: workaround for some platforms */
+    if (function_exists('pcntl_waitpid')) {
+        $status = proc_get_status($proc);
+        if ($status['running']) {
+            pcntl_waitpid($status['pid'], $wStatus);
+            $exitCode = pcntl_wexitstatus($wStatus);
+        } else {
+            $exitCode = $status['exitcode'];
+        }
+    } else {
+        while (true) {
+            $status = proc_get_status($proc);
+            if (!$status['running']) {
+                $exitCode = $status['exitcode'];
+                break;
+            }
+            usleep(1000);
+        }
+    }
     $status = proc_get_status($proc);
     proc_close($proc);
+    $status['exitcode'] = $exitCode;
 
     return $output;
 }
