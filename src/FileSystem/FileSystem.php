@@ -52,6 +52,31 @@ class FileSystem
         return array_values($filter ? array_filter($files, $filter) : $files);
     }
 
+    public static function scanDirRecursive(string $dir, ?callable $filter = null): array
+    {
+        $filepathList = [];
+        $it = new RecursiveDirectoryIterator(
+            $dir,
+            FilesystemIterator::SKIP_DOTS |
+            FilesystemIterator::CURRENT_AS_SELF |
+            FilesystemIterator::UNIX_PATHS
+        );
+
+        $files = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::SELF_FIRST);
+
+        /** @var RecursiveIteratorIterator<RecursiveDirectoryIterator<SplFileInfo>> $iterator */
+        foreach ($files as $file) {
+            $filepath = $file->getPathname();
+            if ($filter && !$filter($filepath)) {
+                continue;
+            }
+            $filepathList[] = $filepath;
+        }
+
+        return $filepathList;
+    }
+
+
     /**
      * remove a file or dir by $path
      */
