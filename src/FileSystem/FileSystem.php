@@ -76,7 +76,6 @@ class FileSystem
         return $filepathList;
     }
 
-
     /**
      * remove a file or dir by $path
      */
